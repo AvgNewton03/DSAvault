@@ -1,12 +1,3 @@
-Yes, those two screenshots look clean, consistent, and showcase both the authentication design and core product interface.
-
-Save the dashboard image as `dashboard.png` and the login screen as `login.png` in a `.github/assets/` or `assets/` folder in your repository.
-
-Here is an industry-grade `README.md` structured for maximum recruiter and engineering impact:
-
----
-
-```markdown
 <div align="center">
 
   <h1>🏛️ DSA Vault</h1>
@@ -180,8 +171,3 @@ The application is deployed on **Vercel** with a decoupled serverless execution 
 
 * **Production URL**: [https://dsavault-one.vercel.app/](https://dsavault-one.vercel.app/?utm_source=gemini)
 
----
-
-```
-
-```
