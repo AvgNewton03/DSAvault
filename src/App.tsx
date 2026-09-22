@@ -206,9 +206,6 @@ export default function App() {
             <button className={`journal-tab ${view === 'achievements' ? 'active' : ''}`} onClick={() => setView('achievements')}>
               Ex Libris
             </button>
-            <button className={`journal-tab ${view === 'settings' ? 'active' : ''}`} onClick={() => setView('settings')}>
-              Settings
-            </button>
           </nav>
 
           <div className="journal-nav-actions">
@@ -259,32 +256,6 @@ export default function App() {
                   >
                     <Settings size={15} />
                     <span>Vault Settings</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="account-dropdown-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setView('library')
-                      setShowAccountMenu(false)
-                    }}
-                  >
-                    <BookOpen size={15} />
-                    <span>Problem Index</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="account-dropdown-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setView('revision')
-                      setShowAccountMenu(false)
-                    }}
-                  >
-                    <RotateCcw size={15} />
-                    <span>Recall Arena</span>
                   </button>
 
                   <button
