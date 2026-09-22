@@ -1,6 +1,6 @@
 <div align="center">
 
-  <h1>🏛️ DSA Vault</h1>
+  <h1>DSA Vault</h1>
   <p><strong>An intelligent spaced-repetition journal engineered to convert algorithmic problem solving into permanent memory.</strong></p>
 
   <p>
@@ -19,23 +19,23 @@
 
 ---
 
-## 📸 Preview
+## Preview
 
 <div align="center">
-  <img src="./assets/dashboard.png" alt="DSA Vault Dashboard Interface" width="100%" />
+  <img src="./src/assets/dashboard.png" alt="DSA Vault Dashboard Interface" width="100%" />
   <p><em>Real-time retention dashboard, adaptive recall queue, and interactive knowledge graph navigation.</em></p>
 </div>
 
 <br/>
 
 <div align="center">
-  <img src="./assets/login.png" alt="DSA Vault Login Interface" width="85%" />
+  <img src="./src/assets/login.png" alt="DSA Vault Login Interface" width="85%" />
   <p><em>Minimalist, editorial-style authentication and session management.</em></p>
 </div>
 
 ---
 
-## 💡 The Core Problem
+## The Core Problem
 
 Engineers preparing for technical interviews often hit a plateau known as the **Leetcoding Forgetfulness Curve**:
 1. You grind 300+ problems across 3–4 months.
@@ -46,7 +46,7 @@ Engineers preparing for technical interviews often hit a plateau known as the **
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Adaptive Spaced Repetition**: Dynamic interval scheduling ($1 \rightarrow 3 \rightarrow 7 \rightarrow 14 \rightarrow 30$ days) that elevates or degrades mastery based on review confidence.
 - **Recall Arena**: A dedicated daily practice mode presenting past solutions without revealing the implementation code until prompted.
@@ -94,7 +94,7 @@ Engineers preparing for technical interviews often hit a plateau known as the **
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -150,7 +150,7 @@ npm run build
 
 ---
 
-## 📈 Performance & Database Optimization
+## Performance & Database Optimization
 
 To ensure sub-millisecond retrieval across high concurrency multi-user workloads, the database schema utilizes strict compound indexing:
 
