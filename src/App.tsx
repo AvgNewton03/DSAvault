@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import {
   BookOpen,
   Check,
-  Clock,
   Code2,
   Edit3,
   ExternalLink,
@@ -25,34 +24,43 @@ import {
   Trash2,
   Trophy,
   UserRound,
-  X,
-  Zap
+  X
 } from 'lucide-react'
 import { api, Problem, Dashboard as DashboardData, setToken, User } from './api'
 
 type View = 'dashboard' | 'library' | 'revision' | 'topics' | 'achievements' | 'settings'
-type Theme = 'dark' | 'light'
+type Theme = 'light' | 'dark'
 
-const TOPIC_LIST = [
-  'Arrays & Hashing',
-  'Two Pointers',
-  'Sliding Window',
-  'Stack & Queue',
-  'Binary Search',
-  'Linked List',
-  'Trees & BST',
-  'Heap / Priority Queue',
-  'Backtracking',
-  'Graphs',
-  'Dynamic Programming',
-  'Bit Manipulation'
+interface TopicMeta {
+  name: string
+  branch: 'linear' | 'hierarchical' | 'relational' | 'optimization'
+  color: string
+}
+
+const TOPIC_TAXONOMY: TopicMeta[] = [
+  { name: 'Arrays & Hashing', branch: 'linear', color: 'var(--pill-arrays)' },
+  { name: 'Two Pointers', branch: 'linear', color: 'var(--pill-pointers)' },
+  { name: 'Sliding Window', branch: 'linear', color: 'var(--pill-search)' },
+  { name: 'Linked Lists', branch: 'linear', color: 'var(--pill-lists)' },
+
+  { name: 'Trees & BST', branch: 'hierarchical', color: 'var(--pill-trees)' },
+  { name: 'Heaps & Queues', branch: 'hierarchical', color: 'var(--pill-stack)' },
+  { name: 'Trie Structures', branch: 'hierarchical', color: 'var(--pill-trees)' },
+  { name: 'Segment Trees', branch: 'hierarchical', color: 'var(--pill-trees)' },
+
+  { name: 'Graphs & BFS/DFS', branch: 'relational', color: 'var(--pill-graphs)' },
+  { name: 'Shortest Paths', branch: 'relational', color: 'var(--pill-graphs)' },
+  { name: 'Union Find', branch: 'relational', color: 'var(--pill-graphs)' },
+  { name: 'Topological Sort', branch: 'relational', color: 'var(--pill-graphs)' },
+
+  { name: 'Binary Search', branch: 'optimization', color: 'var(--pill-search)' },
+  { name: 'Dynamic Programming', branch: 'optimization', color: 'var(--pill-dp)' },
+  { name: 'Backtracking', branch: 'optimization', color: 'var(--pill-pointers)' },
+  { name: 'Greedy Intervals', branch: 'optimization', color: 'var(--pill-arrays)' }
 ]
 
 const fmtDate = (d: string | Date) =>
   new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d))
-
-const fmtShortDate = (d: string | Date) =>
-  new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(d))
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -65,11 +73,11 @@ export default function App() {
   const [toast, setToast] = useState('')
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string>('all')
 
-  // Theme Management (defaults to system preference, persisted in localStorage)
+  // Theme Management (Aged Paper / Dark Espresso)
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('dsa-vault-theme') as Theme | null
     if (saved === 'dark' || saved === 'light') return saved
-    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
 
   useEffect(() => {
@@ -77,7 +85,7 @@ export default function App() {
     localStorage.setItem('dsa-vault-theme', theme)
   }, [theme])
 
-  const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
+  const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'))
 
   const notify = (message: string) => {
     setToast(message)
@@ -130,12 +138,12 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeContent: 'center', textAlign: 'center', gap: '14px' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-border)', color: 'var(--accent-primary)', display: 'grid', placeItems: 'center', margin: '0 auto' }}>
-          <Code2 size={22} />
+      <div style={{ minHeight: '100vh', display: 'grid', placeContent: 'center', textAlign: 'center', gap: '16px' }}>
+        <div className="brand-notebook-mark" style={{ width: '42px', height: '42px', margin: '0 auto', fontSize: '20px' }}>
+          V
         </div>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Loading algorithmic vault…
+        <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '18px', color: 'var(--text-secondary)' }}>
+          Opening your notebook…
         </p>
       </div>
     )
@@ -146,7 +154,7 @@ export default function App() {
   const completeReview = async (id: string, quality: number) => {
     await api(`/problems/${id}/review`, { method: 'POST', body: JSON.stringify({ quality }) })
     await reload()
-    notify(quality >= 4 ? 'Spaced repetition schedule advanced.' : 'Reset for quick reinforcement.')
+    notify(quality >= 4 ? 'Approach locked in. Next recall interval expanded.' : 'Noted. Review scheduled for tomorrow.')
   }
 
   const navigateToLibraryWithTopic = (topicName: string) => {
@@ -155,103 +163,65 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-icon">
-            <Code2 size={18} />
-          </div>
-          <div className="brand-info">
-            <div className="brand-title">
-              DSA<span>Vault</span>
+    <div style={{ minHeight: '100vh', position: 'relative' }}>
+      {/* Floating Top Navigation Island (illoca style) */}
+      <header className="journal-nav-bar">
+        <div className="journal-nav-inner">
+          <div className="journal-brand" onClick={() => setView('dashboard')}>
+            <div className="brand-notebook-mark">V</div>
+            <div className="brand-name">
+              DSA Vault <span>/ journal</span>
             </div>
-            <div className="brand-tag">// v2.0-forge</div>
           </div>
-        </div>
 
-        <div className="nav-section">
-          <div className="nav-section-title">// REPOSITORY</div>
-          <NavItem active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<LayoutDashboard />}>
-            Overview
-          </NavItem>
-          <NavItem active={view === 'library'} onClick={() => { setSelectedTopicFilter('all'); setView('library') }} icon={<BookOpen />} badge={problems.length || undefined}>
-            Problem Library
-          </NavItem>
-          <NavItem active={view === 'revision'} onClick={() => setView('revision')} icon={<Sparkles />} badge={due.length ? due.length : undefined}>
-            Smart Revision
-          </NavItem>
-        </div>
+          <nav className="journal-tabs">
+            <button className={`journal-tab ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')}>
+              Overview
+            </button>
+            <button className={`journal-tab ${view === 'library' ? 'active' : ''}`} onClick={() => { setSelectedTopicFilter('all'); setView('library') }}>
+              Index {problems.length ? <span className="tab-badge">{problems.length}</span> : null}
+            </button>
+            <button className={`journal-tab ${view === 'revision' ? 'active' : ''}`} onClick={() => setView('revision')}>
+              Recall Arena {due.length ? <span className="tab-badge">{due.length}</span> : null}
+            </button>
+            <button className={`journal-tab ${view === 'topics' ? 'active' : ''}`} onClick={() => setView('topics')}>
+              Knowledge Map
+            </button>
+            <button className={`journal-tab ${view === 'achievements' ? 'active' : ''}`} onClick={() => setView('achievements')}>
+              Ex Libris
+            </button>
+            <button className={`journal-tab ${view === 'settings' ? 'active' : ''}`} onClick={() => setView('settings')}>
+              Settings
+            </button>
+          </nav>
 
-        <div className="nav-section">
-          <div className="nav-section-title">// PRACTICE</div>
-          <NavItem active={view === 'topics'} onClick={() => setView('topics')} icon={<Target />}>
-            Topic Taxonomy
-          </NavItem>
-          <NavItem active={view === 'achievements'} onClick={() => setView('achievements')} icon={<Trophy />}>
-            Milestones
-          </NavItem>
-        </div>
+          <div className="journal-nav-actions">
+            <button className="btn-theme-toggle" onClick={toggleTheme} title={`Switch to ${theme === 'light' ? 'Dark Espresso' : 'Warm Paper'} mode`}>
+              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+            </button>
 
-        <div className="sidebar-footer">
-          <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle Dark/Light Theme">
-            <span>
-              {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
-              <span>{theme === 'dark' ? 'Ink Mode' : 'Paper Mode'}</span>
-            </span>
-            <span className="theme-toggle-indicator">{theme.toUpperCase()}</span>
-          </button>
+            <button className="btn-add-stamped" onClick={() => setShowAdd(true)}>
+              <Plus size={14} /> Add Problem
+            </button>
 
-          <NavItem active={view === 'settings'} onClick={() => setView('settings')} icon={<Settings />}>
-            Settings
-          </NavItem>
-
-          <div className="user-profile">
-            <div className="user-avatar">{user.name[0].toUpperCase()}</div>
-            <div className="user-meta">
-              <span className="user-name">{user.name}</span>
-              <span className="user-count">{problems.length} problems</span>
-            </div>
-            <button className="user-signout" onClick={logout} title="Sign Out">
-              <LogOut size={14} />
+            <button
+              onClick={logout}
+              title={`Signed in as ${user.name} (Click to sign out)`}
+              style={{ background: 'transparent', border: '0', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
+            >
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--bg-canvas-subtle)', border: '1px solid var(--border-default)', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                {user.name[0].toUpperCase()}
+              </div>
             </button>
           </div>
         </div>
-      </aside>
+      </header>
 
-      {/* Main Workspace */}
-      <main>
-        <header className="page-header">
-          <div className="page-title-group">
-            <h1>
-              {view === 'dashboard' && `Workspace / ${user.name.split(' ')[0]}`}
-              {view === 'library' && 'Problem Repository'}
-              {view === 'revision' && 'Spaced Repetition Arena'}
-              {view === 'topics' && 'Algorithmic Taxonomy & Mastery'}
-              {view === 'achievements' && 'Milestones & Achievements'}
-              {view === 'settings' && 'Vault Configuration'}
-            </h1>
-            <p className="page-subtitle">
-              {view === 'dashboard' && 'Spaced repetition schedule & algorithmic retention telemetry.'}
-              {view === 'library' && 'Personal index of solved algorithms with time & space notes.'}
-              {view === 'revision' && 'Active recall sessions using the SM-2 Leitner interval algorithm.'}
-              {view === 'topics' && 'Curriculum distribution and topic depth breakdown.'}
-              {view === 'achievements' && 'Earned milestones based on deliberate practice consistency.'}
-              {view === 'settings' && 'Manage profile credentials and system themes.'}
-            </p>
-          </div>
-
-          <div className="page-actions">
-            {view !== 'settings' && (
-              <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-                <Plus size={15} /> Add Problems
-              </button>
-            )}
-          </div>
-        </header>
-
+      {/* Main Journal Canvas */}
+      <main className="journal-canvas">
         {view === 'dashboard' && (
           <Dashboard
+            user={user}
             data={dash}
             due={due}
             problems={problems}
@@ -259,6 +229,7 @@ export default function App() {
             onSelectTopic={navigateToLibraryWithTopic}
           />
         )}
+
         {view === 'library' && (
           <Library
             problems={problems}
@@ -268,7 +239,9 @@ export default function App() {
             onOpenAdd={() => setShowAdd(true)}
           />
         )}
+
         {view === 'revision' && <Revision due={due} complete={completeReview} />}
+
         {view === 'topics' && (
           <TopicsView
             data={dash}
@@ -276,7 +249,9 @@ export default function App() {
             onSelectTopic={navigateToLibraryWithTopic}
           />
         )}
+
         {view === 'achievements' && <AchievementsView data={dash} problems={problems} />}
+
         {view === 'settings' && (
           <SettingsPage
             user={user}
@@ -289,7 +264,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Add Problems Modal */}
+      {/* Add Modal */}
       {showAdd && (
         <AddModal
           close={() => setShowAdd(false)}
@@ -297,15 +272,15 @@ export default function App() {
             await api('/problems/bulk', { method: 'POST', body: JSON.stringify(data) })
             await reload()
             setShowAdd(false)
-            notify('Problems successfully indexed into your vault.')
+            notify('Indexed into vault notebook.')
           }}
         />
       )}
 
-      {/* Toast Feedback */}
+      {/* Handcrafted Toast */}
       {toast && (
-        <div className="toast">
-          <Check size={14} />
+        <div className="journal-toast">
+          <Check size={14} style={{ color: 'var(--accent-clay)' }} />
           <span>{toast}</span>
         </div>
       )}
@@ -313,26 +288,18 @@ export default function App() {
   )
 }
 
-function NavItem({ icon, children, active, badge, onClick }: any) {
-  return (
-    <button onClick={onClick} className={`nav-item ${active ? 'active' : ''}`}>
-      {icon}
-      <span>{children}</span>
-      {badge !== undefined && <span className="badge">{badge}</span>}
-    </button>
-  )
-}
-
 /* ==========================================================================
-   1. DASHBOARD VIEW (Forge + Asymmetric Telemetry + Topic Map + Heatmap)
+   1. DASHBOARD — The Editorial Overview
    ========================================================================== */
 function Dashboard({
+  user,
   data,
   due,
   problems,
   startRevision,
   onSelectTopic
 }: {
+  user: User
   data: DashboardData | null
   due: Problem[]
   problems: Problem[]
@@ -340,6 +307,9 @@ function Dashboard({
   onSelectTopic: (topic: string) => void
 }) {
   if (!data) return null
+
+  const streak = data.streak
+  const total = problems.length
 
   // Activity calculation (112 days = 16 weeks)
   const activityMap = new Map(data.activity.map(x => [x._id, x.count]))
@@ -350,257 +320,188 @@ function Dashboard({
     return { date: key, count: activityMap.get(key) || 0 }
   })
 
-  // Difficulty counts
-  const easyCount = problems.filter(p => p.difficulty === 'Easy').length
-  const medCount = problems.filter(p => p.difficulty === 'Medium').length
-  const hardCount = problems.filter(p => p.difficulty === 'Hard').length
-
-  // Streak Gauge Calculations
-  const streakDays = data.streak
-  const radius = 40
-  const circumference = 2 * Math.PI * radius
-  // Max out visually at 30 days
-  const progressPercent = Math.min(100, (streakDays / 30) * 100)
-  const strokeDashoffset = circumference - (progressPercent / 100) * circumference
+  // Easy / Med / Hard counts
+  const easy = problems.filter(p => p.difficulty === 'Easy').length
+  const med = problems.filter(p => p.difficulty === 'Medium').length
+  const hard = problems.filter(p => p.difficulty === 'Hard').length
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Upper Asymmetric Section: Hero Forge + Telemetry */}
-      <section className="dashboard-grid">
-        {/* Algorithmic Repetition Forge */}
-        <div className="forge-hero">
+    <div>
+      {/* Editorial Headline Moment (illoca style) */}
+      <section className="hero-statement-section">
+        <div className="annotation-badge">
+          <span>ARCHITECTURAL RECALL</span>
+          <span className="scribble-arrow">↗</span>
+          <span style={{ fontSize: '15px', color: 'var(--text-muted)' }}>[proof of work]</span>
+        </div>
+
+        <h1 className="hero-statement-title">
+          {due.length > 0 ? (
+            <>
+              You are on a <em>{streak}-day</em> streak.
+              <br />
+              {due.length} algorithmic problem{due.length > 1 ? 's' : ''} call for recall today.
+            </>
+          ) : total > 0 ? (
+            <>
+              Your algorithms are <em>resting quietly</em>.
+              <br />
+              {total} patterns committed to long-term memory.
+            </>
+          ) : (
+            <>
+              Your clean notebook awaits.
+              <br />
+              Index your <em>first algorithm</em> to start the spaced repetition loop.
+            </>
+          )}
+        </h1>
+
+        <div className="hero-inline-stats">
+          <div className="inline-stat-item">
+            <strong>{total}</strong> indexed solutions
+          </div>
+          <span className="inline-stat-sep">/</span>
+          <div className="inline-stat-item">
+            <strong>{streak}</strong> consecutive days
+          </div>
+          <span className="inline-stat-sep">/</span>
+          <div className="inline-stat-item">
+            <strong>{data.mastery}%</strong> 7-day retention rate
+          </div>
+          <span className="inline-stat-sep">/</span>
+          <div className="inline-stat-item">
+            <span>{easy} Easy · {med} Med · {hard} Hard</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Visual Hero: Organic Botanical Growth Stem (Streak) */}
+      <section className="streak-growth-banner">
+        <div className="streak-growth-copy">
+          <div className="streak-tag">
+            <span>GROWTH STEM</span>
+            <span style={{ fontSize: '13px' }}>— active habit</span>
+          </div>
+          <h2>{streak > 0 ? `${streak} days of deliberate recall.` : 'Begin your daily growth stem.'}</h2>
+          <p>
+            {due.length > 0
+              ? 'Spaced repetition works like layered memory strata. Complete today’s recall reps to advance your intervals.'
+              : 'All scheduled intervals have been met. Practice fresh problems or review past topics below.'}
+          </p>
+        </div>
+
+        {/* Botanical 7-Day Stem Representation */}
+        <div className="botanical-stem-container">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayChar, i) => {
+            const isActive = i < Math.min(7, Math.max(1, streak))
+            const isToday = i === Math.min(6, streak - 1)
+            return (
+              <div key={i} className={`stem-node ${isActive ? 'active' : ''}`}>
+                <div className={`stem-leaf ${isToday ? 'today' : isActive ? 'active' : ''}`} />
+                <span className="stem-day-label">{dayChar}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        <button className="streak-action-btn" onClick={startRevision}>
+          {due.length ? `Begin Recall Session (${due.length}) →` : 'Practice Spaced Cards →'}
+        </button>
+      </section>
+
+      {/* The WOW Feature: Interactive Hand-Drawn Knowledge Graph */}
+      <section className="knowledge-tree-section">
+        <div className="section-editorial-header">
           <div>
-            <div className="forge-top">
-              <div>
-                <span className="forge-status-badge">
-                  <Flame size={12} /> SPICED REPETITION FORGE
-                </span>
-                <h2>
-                  {due.length
-                    ? `${due.length} algorithmic problem${due.length > 1 ? 's' : ''} due for recall`
-                    : 'All recall intervals up to date'}
-                </h2>
-                <p>
-                  {due.length
-                    ? 'Reinforce neural paths and lock approach invariants into long-term memory before the interval decays.'
-                    : 'Your memory queue is clear. New reviews will trigger automatically according to the SM-2 interval algorithm.'}
-                </p>
-              </div>
-
-              {/* Circular SVG Streak Gauge */}
-              <div className="streak-gauge-wrap" title={`${streakDays} days active practice streak`}>
-                <svg viewBox="0 0 100 100">
-                  <circle className="streak-gauge-bg" cx="50" cy="50" r={radius} />
-                  <circle
-                    className="streak-gauge-meter"
-                    cx="50"
-                    cy="50"
-                    r={radius}
-                    style={{
-                      strokeDasharray: circumference,
-                      strokeDashoffset
-                    }}
-                  />
-                </svg>
-                <div className="streak-gauge-inner">
-                  <div className="streak-gauge-number">{streakDays}</div>
-                  <span className="streak-gauge-label">DAY STREAK</span>
-                </div>
-              </div>
-            </div>
+            <h2>Interactive Algorithm Knowledge Tree</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+              A hand-mapped diagram of how data structures relate. Hover branches or select nodes to inspect your coverage.
+            </p>
           </div>
-
-          <div className="forge-footer">
-            <div className="forge-stats-row">
-              <div className="forge-stat-pill">
-                <span>RECALL ACCURACY</span>
-                <strong>{data.mastery}% Retention</strong>
-              </div>
-              <div className="forge-stat-pill">
-                <span>QUEUE STATUS</span>
-                <strong>{due.length} Due Today</strong>
-              </div>
-              <div className="forge-stat-pill">
-                <span>INTERVAL MULTIPLIER</span>
-                <strong>2.2x Spacing</strong>
-              </div>
-            </div>
-
-            <button className="btn btn-primary" onClick={startRevision}>
-              {due.length ? 'Begin Recall Session →' : 'Practice Review →'}
-            </button>
-          </div>
+          <span className="annotation">connected nodes ───○</span>
         </div>
 
-        {/* Telemetry Column */}
-        <div className="telemetry-col">
-          <div className="telemetry-card">
-            <div className="telemetry-card-main">
-              <span className="telemetry-label">
-                <BookOpen /> Solved Algorithms
-              </span>
-              <div className="telemetry-value">{data.total}</div>
-              <span className="telemetry-subtext">
-                <span style={{ color: 'var(--color-easy)' }}>{easyCount}E</span> ·{' '}
-                <span style={{ color: 'var(--color-medium)' }}>{medCount}M</span> ·{' '}
-                <span style={{ color: 'var(--color-hard)' }}>{hardCount}H</span>
-              </span>
-            </div>
-            <span className="telemetry-metric-badge">All-Time</span>
-          </div>
-
-          <div className="telemetry-card">
-            <div className="telemetry-card-main">
-              <span className="telemetry-label">
-                <Sparkles /> Due in Queue
-              </span>
-              <div className="telemetry-value" style={{ color: due.length ? 'var(--accent-primary)' : 'inherit' }}>
-                {due.length}
-              </div>
-              <span className="telemetry-subtext">Requires immediate mental retrieval</span>
-            </div>
-            <span className="telemetry-metric-badge">SM-2</span>
-          </div>
-
-          <div className="telemetry-card">
-            <div className="telemetry-card-main">
-              <span className="telemetry-label">
-                <Target /> Mastery Index
-              </span>
-              <div className="telemetry-value">{data.mastery}%</div>
-              <span className="telemetry-subtext">Problems retained past 7+ day interval</span>
-            </div>
-            <span className="telemetry-metric-badge">&gt;7d Reps</span>
-          </div>
-        </div>
+        <InteractiveTopicGraph problems={problems} onSelectTopic={onSelectTopic} />
       </section>
 
-      {/* Structural Topic Map / Knowledge Nodes */}
-      <section className="card knowledge-tree-section">
-        <div className="card-header">
-          <div className="card-title">
-            <GitBranch size={16} style={{ color: 'var(--accent-primary)' }} />
-            <span>Knowledge Graph &amp; Topic Nodes</span>
-          </div>
-          <span className="card-title-code">Select node to filter repository</span>
-        </div>
-
-        <div className="topic-map-canvas">
-          <div className="topic-node-grid">
-            {TOPIC_LIST.slice(0, 8).map(topicName => {
-              const matched = data.topics.find(t => t._id.toLowerCase() === topicName.toLowerCase() || t._id.toLowerCase().includes(topicName.toLowerCase().split(' ')[0]))
-              const count = matched ? matched.solved : 0
-              const maxTopicSolved = Math.max(1, ...data.topics.map(t => t.solved))
-              const percent = Math.min(100, Math.round((count / maxTopicSolved) * 100))
-
-              return (
-                <div
-                  key={topicName}
-                  className="topic-node"
-                  onClick={() => onSelectTopic(topicName)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="topic-node-header">
-                    <div className="topic-node-name">
-                      <span className="topic-node-dot" style={{ opacity: count ? 1 : 0.35 }} />
-                      <span>{topicName}</span>
-                    </div>
-                    <span className="topic-node-count">{count} solved</span>
-                  </div>
-
-                  <div className="topic-progress-bar">
-                    <div className="topic-progress-fill" style={{ width: `${percent}%` }} />
-                  </div>
-
-                  <div className="topic-node-footer">
-                    <span>{count ? `${count} indexed` : '0 indexed'}</span>
-                    <span style={{ color: 'var(--accent-text)' }}>Explore →</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Two Column Section: Queue & Consistency Grid */}
-      <section className="content-two-col">
-        {/* Today's Due Queue */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              <Clock size={16} style={{ color: 'var(--accent-primary)' }} />
-              <span>Next Due Problems</span>
-            </div>
-            <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={startRevision}>
-              Review All ({due.length}) →
+      {/* Today's Queue & Activity Calendar Row */}
+      <section className="editorial-two-col">
+        {/* Next Due Queue */}
+        <div className="editorial-card">
+          <div className="editorial-card-header">
+            <h3>Today's Review Docket</h3>
+            <button className="editorial-link" onClick={startRevision}>
+              Review queue ({due.length}) →
             </button>
           </div>
 
-          <div className="queue-list">
+          <div>
             {due.length ? (
               due.slice(0, 4).map((p, idx) => (
-                <div key={p._id} className="queue-item">
-                  <div className="queue-meta">
-                    <span className="queue-title">{p.title}</span>
-                    <span className="queue-sub">
-                      <span>{p.topic}</span>
-                      <span>·</span>
-                      <span>{p.platform}</span>
-                      <span>·</span>
-                      <span className={`diff-tag ${p.difficulty.toLowerCase()}`}>{p.difficulty}</span>
-                    </span>
+                <div key={p._id} className="queue-row">
+                  <div className="queue-left">
+                    <span className="queue-idx">#{String(idx + 1).padStart(2, '0')}</span>
+                    <div>
+                      <span className="queue-title">{p.title}</span>
+                      <span className="queue-subtext">
+                        <span className="genre-pill" style={{ background: getTopicColor(p.topic) }}>
+                          {p.topic}
+                        </span>
+                        <span>{p.platform}</span>
+                        <span>·</span>
+                        <span className="difficulty-bullet">
+                          {p.difficulty === 'Easy' ? '●○○ Easy' : p.difficulty === 'Medium' ? '●●○ Med' : '●●● Hard'}
+                        </span>
+                      </span>
+                    </div>
                   </div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-text)' }}>
-                    #{idx + 1}
-                  </span>
+
+                  <button className="editorial-link" onClick={startRevision}>
+                    Recall →
+                  </button>
                 </div>
               ))
             ) : (
-              <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-tertiary)' }}>
-                <Check size={28} style={{ color: 'var(--color-easy)', margin: '0 auto 8px', display: 'block' }} />
-                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Queue is empty</p>
-                <p style={{ fontSize: '12px' }}>No algorithmic cards due right now.</p>
+              <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-secondary)' }}>
+                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '17px', color: 'var(--text-ink)', marginBottom: '4px' }}>
+                  The docket is empty.
+                </p>
+                <p style={{ fontSize: '12.5px' }}>Every active problem has been revised for this cycle.</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Consistency Activity Grid (Heatmap) */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              <Layers size={16} style={{ color: 'var(--accent-primary)' }} />
-              <span>Algorithmic Consistency</span>
-            </div>
-            <span className="card-title-code">Past 16 Weeks</span>
+        {/* Handcrafted Activity Matrix */}
+        <div className="editorial-card">
+          <div className="editorial-card-header">
+            <h3>Consistency Log</h3>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)' }}>
+              16 weeks recorded
+            </span>
           </div>
 
-          <div className="heatmap-wrap">
-            <div className="heatmap-grid">
-              {days.map((d, i) => {
-                const lvl = d.count >= 4 ? 'l4' : d.count >= 3 ? 'l3' : d.count >= 2 ? 'l2' : d.count >= 1 ? 'l1' : ''
-                return (
-                  <div
-                    key={i}
-                    className={`heat-sq ${lvl}`}
-                    title={`${d.date}: ${d.count} problem${d.count === 1 ? '' : 's'} solved`}
-                  />
-                )
-              })}
-            </div>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+            Each mark represents an algorithm solved or recalled on that day.
+          </p>
 
-            <div className="heatmap-footer">
-              <span>{data.activity.reduce((acc, curr) => acc + curr.count, 0)} solves in the last year</span>
-              <div className="heatmap-legend">
-                <span>Less</span>
-                <span className="heatmap-legend-sq" style={{ background: 'var(--bg-surface-elevated)' }} />
-                <span className="heatmap-legend-sq" style={{ background: 'rgba(245, 158, 11, 0.25)' }} />
-                <span className="heatmap-legend-sq" style={{ background: 'rgba(245, 158, 11, 0.55)' }} />
-                <span className="heatmap-legend-sq" style={{ background: 'var(--accent-primary)' }} />
-                <span>More</span>
-              </div>
-            </div>
+          <div className="activity-matrix">
+            {days.map((d, i) => {
+              const lvl = d.count >= 4 ? 'lvl-4' : d.count >= 3 ? 'lvl-3' : d.count >= 2 ? 'lvl-2' : d.count >= 1 ? 'lvl-1' : ''
+              return (
+                <div
+                  key={i}
+                  className={`matrix-cell ${lvl}`}
+                  title={`${d.date}: ${d.count} recorded recall${d.count === 1 ? '' : 's'}`}
+                />
+              )
+            })}
+          </div>
+
+          <div className="matrix-meta">
+            <span>{data.activity.reduce((a, b) => a + b.count, 0)} total reviews logged</span>
+            <span>Regularity &gt; Cramming</span>
           </div>
         </div>
       </section>
@@ -609,7 +510,121 @@ function Dashboard({
 }
 
 /* ==========================================================================
-   2. PROBLEM LIBRARY VIEW (Clean Code-Dense Table + Search + Filtering)
+   INTERACTIVE HAND-DRAWN TOPIC GRAPH (The WOW Feature)
+   ========================================================================== */
+function InteractiveTopicGraph({
+  problems,
+  onSelectTopic
+}: {
+  problems: Problem[]
+  onSelectTopic: (topic: string) => void
+}) {
+  const [hoveredTopic, setHoveredTopic] = useState<string | null>(null)
+
+  const branches = [
+    {
+      id: 'linear',
+      title: 'Linear & Sequences',
+      topics: ['Arrays & Hashing', 'Two Pointers', 'Sliding Window', 'Linked Lists']
+    },
+    {
+      id: 'hierarchical',
+      title: 'Trees & Heaps',
+      topics: ['Trees & BST', 'Heaps & Queues', 'Trie Structures', 'Segment Trees']
+    },
+    {
+      id: 'relational',
+      title: 'Graphs & Networks',
+      topics: ['Graphs & BFS/DFS', 'Shortest Paths', 'Union Find', 'Topological Sort']
+    },
+    {
+      id: 'optimization',
+      title: 'Search & DP',
+      topics: ['Binary Search', 'Dynamic Programming', 'Backtracking', 'Greedy Intervals']
+    }
+  ]
+
+  return (
+    <div className="graph-canvas-box">
+      {/* Hand-drawn SVG connector curves between branches */}
+      <svg className="graph-svg-layer" preserveAspectRatio="none">
+        <path
+          d="M 250 80 C 350 40, 550 40, 650 80"
+          className={hoveredTopic ? 'active' : ''}
+        />
+        <path
+          d="M 250 160 C 400 130, 600 130, 750 160"
+          className={hoveredTopic ? 'active' : ''}
+        />
+        <path
+          d="M 500 100 C 600 180, 800 180, 950 100"
+          className={hoveredTopic ? 'active' : ''}
+        />
+      </svg>
+
+      <div className="graph-nodes-container">
+        {branches.map(branch => (
+          <div key={branch.id} className="graph-branch-col">
+            <h4 className="branch-title">{branch.title}</h4>
+
+            {branch.topics.map(topicName => {
+              const count = problems.filter(p => p.topic.toLowerCase().includes(topicName.toLowerCase().split(' ')[0])).length
+              const color = getTopicColor(topicName)
+              const isSelected = hoveredTopic === topicName
+
+              return (
+                <div
+                  key={topicName}
+                  className={`graph-node-pill ${isSelected ? 'selected' : ''}`}
+                  onMouseEnter={() => setHoveredTopic(topicName)}
+                  onMouseLeave={() => setHoveredTopic(null)}
+                  onClick={() => onSelectTopic(topicName)}
+                >
+                  <div className="node-pill-top">
+                    <span className="node-topic-name">{topicName}</span>
+                    <span className="genre-dot" style={{ background: color }} />
+                  </div>
+
+                  <div className="node-pill-stats">
+                    <span>{count} solved</span>
+                    <strong style={{ color: count > 0 ? 'var(--accent-clay)' : 'var(--text-muted)' }}>
+                      {count > 0 ? 'Explore →' : 'Empty'}
+                    </strong>
+                  </div>
+
+                  <div className="node-progress-track">
+                    <div
+                      className="node-progress-bar"
+                      style={{
+                        width: `${Math.min(100, count * 15)}%`,
+                        background: color
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function getTopicColor(topic: string): string {
+  const lower = topic.toLowerCase()
+  if (lower.includes('array') || lower.includes('hash')) return 'var(--pill-arrays)'
+  if (lower.includes('pointer') || lower.includes('window')) return 'var(--pill-pointers)'
+  if (lower.includes('tree') || lower.includes('trie')) return 'var(--pill-trees)'
+  if (lower.includes('graph') || lower.includes('path')) return 'var(--pill-graphs)'
+  if (lower.includes('dynamic') || lower.includes('dp')) return 'var(--pill-dp)'
+  if (lower.includes('list')) return 'var(--pill-lists)'
+  if (lower.includes('stack') || lower.includes('queue') || lower.includes('heap')) return 'var(--pill-stack)'
+  return 'var(--pill-search)'
+}
+
+/* ==========================================================================
+   2. PROBLEM LIBRARY — Field Journal Index
    ========================================================================== */
 function Library({
   problems,
@@ -624,137 +639,128 @@ function Library({
   initialTopicFilter: string
   onOpenAdd: () => void
 }) {
-  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
   const [topicFilter, setTopicFilter] = useState(initialTopicFilter)
   const [diffFilter, setDiffFilter] = useState('all')
   const [editing, setEditing] = useState<Problem | null>(null)
 
   const filtered = useMemo(() => {
     return problems.filter(p => {
-      const matchSearch = p.title.toLowerCase().includes(search.toLowerCase()) || p.notes.toLowerCase().includes(search.toLowerCase())
-      const matchTopic = topicFilter === 'all' || p.topic.toLowerCase().includes(topicFilter.toLowerCase())
-      const matchDiff = diffFilter === 'all' || p.difficulty.toLowerCase() === diffFilter.toLowerCase()
-      return matchSearch && matchTopic && matchDiff
+      const matchQ = p.title.toLowerCase().includes(query.toLowerCase()) || p.notes.toLowerCase().includes(query.toLowerCase())
+      const matchT = topicFilter === 'all' || p.topic.toLowerCase().includes(topicFilter.toLowerCase())
+      const matchD = diffFilter === 'all' || p.difficulty.toLowerCase() === diffFilter.toLowerCase()
+      return matchQ && matchT && matchD
     })
-  }, [problems, search, topicFilter, diffFilter])
+  }, [problems, query, topicFilter, diffFilter])
 
   const deleteProblem = async (id: string) => {
-    if (!confirm('Permanently remove this problem from your vault?')) return
-    try {
-      await api(`/problems/${id}`, { method: 'DELETE' })
-      await reload()
-      notify('Problem removed from repository.')
-    } catch {
-      notify('Could not remove problem.')
-    }
+    if (!confirm('Erase this problem entry from your notebook?')) return
+    await api(`/problems/${id}`, { method: 'DELETE' })
+    await reload()
+    notify('Problem erased from journal.')
   }
 
   return (
     <div>
-      <div className="library-toolbar">
+      <div className="catalog-toolbar">
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="search-box">
+          <div className="catalog-search">
             <Search size={15} />
             <input
-              type="text"
-              placeholder="Search problem title or notes..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              placeholder="Search problem titles or complexity notes…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
             />
           </div>
 
-          <select className="filter-select" value={topicFilter} onChange={e => setTopicFilter(e.target.value)}>
+          <select className="catalog-select" value={topicFilter} onChange={e => setTopicFilter(e.target.value)}>
             <option value="all">All Topics ({problems.length})</option>
-            {TOPIC_LIST.map(t => (
-              <option key={t} value={t}>
-                {t}
+            {TOPIC_TAXONOMY.map(t => (
+              <option key={t.name} value={t.name}>
+                {t.name}
               </option>
             ))}
           </select>
 
-          <select className="filter-select" value={diffFilter} onChange={e => setDiffFilter(e.target.value)}>
+          <select className="catalog-select" value={diffFilter} onChange={e => setDiffFilter(e.target.value)}>
             <option value="all">All Difficulties</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
+            <option value="easy">Easy (●○○)</option>
+            <option value="medium">Medium (●●○)</option>
+            <option value="hard">Hard (●●●)</option>
           </select>
         </div>
 
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-          Showing {filtered.length} of {problems.length} records
-        </div>
+        <button className="btn-add-stamped" onClick={onOpenAdd}>
+          <Plus size={14} /> Add Problem
+        </button>
       </div>
 
-      <div className="table-wrap">
-        <table className="data-table">
+      <div className="catalog-table-wrap">
+        <table className="catalog-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>PROBLEM</th>
-              <th>TOPIC</th>
-              <th>DIFFICULTY</th>
-              <th>PLATFORM</th>
-              <th>NEXT DUE</th>
-              <th style={{ textAlign: 'right' }}>ACTIONS</th>
+              <th>Folio #</th>
+              <th>Algorithm Problem</th>
+              <th>Topic Domain</th>
+              <th>Complexity &amp; Difficulty</th>
+              <th>Platform</th>
+              <th>Next Recall</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length ? (
-              filtered.map((p, index) => {
-                const isOverdue = new Date(p.nextReviewAt) <= new Date()
-                return (
-                  <tr key={p._id} className="clickable" onClick={() => setEditing(p)}>
-                    <td className="mono-cell" style={{ color: 'var(--text-tertiary)' }}>
-                      #{String(index + 1).padStart(3, '0')}
-                    </td>
-                    <td className="problem-title">{p.title}</td>
-                    <td>{p.topic}</td>
-                    <td>
-                      <span className={`diff-tag ${p.difficulty.toLowerCase()}`}>{p.difficulty}</span>
-                    </td>
-                    <td className="mono-cell" style={{ color: 'var(--text-secondary)' }}>
-                      {p.platform}
-                    </td>
-                    <td className="mono-cell">
-                      <span style={{ color: isOverdue ? 'var(--accent-primary)' : 'inherit', fontWeight: isOverdue ? 600 : 400 }}>
-                        {fmtShortDate(p.nextReviewAt)}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="table-action-btn"
-                        onClick={e => {
-                          e.stopPropagation()
-                          setEditing(p)
-                        }}
-                        title="Edit Problem"
-                      >
-                        <Edit3 size={14} />
-                      </button>
-                      <button
-                        className="table-action-btn"
-                        onClick={e => {
-                          e.stopPropagation()
-                          deleteProblem(p._id)
-                        }}
-                        title="Delete Problem"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })
+              filtered.map((p, idx) => (
+                <tr key={p._id} className="clickable" onClick={() => setEditing(p)}>
+                  <td className="catalog-mono">#{String(idx + 1).padStart(3, '0')}</td>
+                  <td className="catalog-title">{p.title}</td>
+                  <td>
+                    <span className="genre-pill" style={{ background: getTopicColor(p.topic) }}>
+                      {p.topic}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="difficulty-bullet">
+                      {p.difficulty === 'Easy' ? '●○○ Easy' : p.difficulty === 'Medium' ? '●●○ Med' : '●●● Hard'}
+                    </span>
+                  </td>
+                  <td className="catalog-mono">{p.platform}</td>
+                  <td className="catalog-mono">
+                    <span style={{ color: new Date(p.nextReviewAt) <= new Date() ? 'var(--accent-clay)' : 'inherit' }}>
+                      {fmtDate(p.nextReviewAt)}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="action-icon-btn"
+                      onClick={e => {
+                        e.stopPropagation()
+                        setEditing(p)
+                      }}
+                      title="Edit Entry"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                    <button
+                      className="action-icon-btn"
+                      onClick={e => {
+                        e.stopPropagation()
+                        deleteProblem(p._id)
+                      }}
+                      title="Delete Entry"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px 14px', color: 'var(--text-tertiary)' }}>
-                  No problems matched your query.{' '}
-                  <button
-                    onClick={onOpenAdd}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    Add your first problem →
-                  </button>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
+                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '18px', color: 'var(--text-ink)', marginBottom: '4px' }}>
+                    No matching folios found.
+                  </p>
+                  <p style={{ fontSize: '13px' }}>Adjust your search query or add a new algorithm entry above.</p>
                 </td>
               </tr>
             )}
@@ -770,7 +776,7 @@ function Library({
             await api(`/problems/${editing._id}`, { method: 'PATCH', body: JSON.stringify(updates) })
             await reload()
             setEditing(null)
-            notify('Problem record updated.')
+            notify('Folio entry saved.')
           }}
         />
       )}
@@ -779,106 +785,113 @@ function Library({
 }
 
 /* ==========================================================================
-   3. SMART REVISION VIEW (Recall Session Arena)
+   3. SMART REVISION — The Tactile Index Card Arena
    ========================================================================== */
 function Revision({ due, complete }: { due: Problem[]; complete: (id: string, q: number) => Promise<void> }) {
   const [index, setIndex] = useState(0)
-  const [showNotes, setShowNotes] = useState(false)
+  const [revealNotes, setRevealNotes] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const current = due[index]
 
   if (!current) {
     return (
-      <div className="all-caught-box">
-        <div className="all-caught-icon">
+      <div style={{ textAlign: 'center', padding: '70px 20px', maxWidth: '480px', margin: '40px auto' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-clay-subtle)', color: 'var(--accent-clay)', display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
           <Check size={24} />
         </div>
-        <h2>Recall Session Complete</h2>
-        <p>
-          You have reviewed all due algorithmic problems for this cycle. The intervals have been recalculated and
-          stored into MongoDB.
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', fontStyle: 'italic', color: 'var(--text-ink)', marginBottom: '8px' }}>
+          Recall Session Concluded.
+        </h2>
+        <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          You have reviewed every due card in this cycle. Your memory intervals have been safely recalculated and
+          stored.
         </p>
       </div>
     )
   }
 
-  const handleScore = async (quality: number) => {
+  const handleRating = async (quality: number) => {
     setBusy(true)
     try {
       await complete(current._id, quality)
-      setShowNotes(false)
+      setRevealNotes(false)
       setIndex(prev => prev + 1)
     } finally {
       setBusy(false)
     }
   }
 
-  const progress = Math.round(((index + 1) / due.length) * 100)
-
   return (
-    <div className="revision-session-wrap">
-      <div className="session-progress-header">
-        <span>
-          REVISION ITEM {index + 1} OF {due.length}
-        </span>
-        <span>{progress}% SESSION COMPLETED</span>
+    <div className="arena-card-container">
+      <div className="arena-progress">
+        <span>CARD {index + 1} OF {due.length}</span>
+        <span>{Math.round(((index + 1) / due.length) * 100)}% COMPLETED</span>
       </div>
 
-      <div className="session-progress-bar">
-        <div className="session-progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-
-      <div className="flashcard">
-        <div className="flashcard-top">
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className={`diff-tag ${current.difficulty.toLowerCase()}`}>{current.difficulty}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-              {current.topic}
-            </span>
-          </div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-            {current.platform}
-          </span>
+      <div className="tactile-index-card">
+        <div className="card-stamped-label">
+          <span>RECALL PROMPT // </span>
+          <span style={{ color: 'var(--pencil-ink)', fontStyle: 'italic' }}>no peeking until you attempt</span>
         </div>
 
-        <h2 className="flashcard-problem-title">{current.title}</h2>
-        <p className="flashcard-prompt">
-          Pause. Mentally reconstruct your solution: What data structure was used? What were the invariant conditions,
-          edge cases, and Big-O time and space bounds?
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+          <span className="genre-pill" style={{ background: getTopicColor(current.topic) }}>
+            {current.topic}
+          </span>
+          <span className="difficulty-bullet">
+            {current.difficulty === 'Easy' ? '●○○ Easy' : current.difficulty === 'Medium' ? '●●○ Med' : '●●● Hard'}
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>· {current.platform}</span>
+        </div>
+
+        <h2 className="card-problem-heading">{current.title}</h2>
+
+        <p className="card-recall-instruction">
+          Close your eyes or grab a piece of scrap paper. Mentally walk through:
+          <br />
+          <strong>1.</strong> The core invariant condition.
+          <br />
+          <strong>2.</strong> Time and Space complexity bounds.
+          <br />
+          <strong>3.</strong> One tricky edge case (e.g. empty input, cycle, negative weights).
         </p>
 
-        {showNotes ? (
-          <div className="flashcard-notes-panel">
-            <span className="flashcard-notes-label">// SAVED IMPLEMENTATION &amp; COMPLEXITY NOTES</span>
-            {current.notes ? current.notes : 'No implementation notes saved for this problem.'}
+        {revealNotes ? (
+          <div className="notes-accordion-box">
+            <span style={{ display: 'block', fontFamily: 'var(--font-hand)', fontSize: '16px', color: 'var(--pencil-terracotta)', fontWeight: 700, marginBottom: '6px' }}>
+              // YOUR FIELD NOTES
+            </span>
+            {current.notes ? current.notes : 'No personal note stored for this entry.'}
           </div>
         ) : (
           <button
-            className="btn btn-secondary"
-            style={{ marginBottom: '24px', width: '100%' }}
-            onClick={() => setShowNotes(true)}
+            style={{
+              background: 'var(--bg-canvas-subtle)',
+              border: '1px solid var(--border-default)',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--text-ink)'
+            }}
+            onClick={() => setRevealNotes(true)}
           >
-            <Eye size={14} /> Reveal Implementation &amp; Complexity Notes
+            <Eye size={14} /> Reveal Stored Implementation &amp; Complexity Note
           </button>
         )}
 
-        {showNotes && (
-          <button
-            className="btn btn-ghost"
-            style={{ marginBottom: '24px', fontSize: '11.5px' }}
-            onClick={() => setShowNotes(false)}
-          >
-            <EyeOff size={13} /> Hide notes
+        <div className="recall-btn-grid">
+          <button className="btn-recall-pass" disabled={busy} onClick={() => handleRating(5)}>
+            <Check size={16} /> I Remembered the Approach (+2.2x interval)
           </button>
-        )}
-
-        <div className="recall-actions-grid">
-          <button className="recall-btn success" disabled={busy} onClick={() => handleScore(5)}>
-            <Check size={16} /> Remembered Approach (+2.2x interval)
-          </button>
-          <button className="recall-btn retry" disabled={busy} onClick={() => handleScore(2)}>
-            <RotateCcw size={15} /> Needed Hint / Reset (1 day)
+          <button className="btn-recall-reset" disabled={busy} onClick={() => handleRating(2)}>
+            <RotateCcw size={15} /> Needed a Hint / Reset (Review tomorrow)
           </button>
         </div>
       </div>
@@ -887,7 +900,7 @@ function Revision({ due, complete }: { due: Problem[]; complete: (id: string, q:
 }
 
 /* ==========================================================================
-   4. TOPIC TAXONOMY VIEW
+   4. TOPICS TAXONOMY VIEW (Curated Curriculum Folio)
    ========================================================================== */
 function TopicsView({
   data,
@@ -900,25 +913,40 @@ function TopicsView({
 }) {
   return (
     <div>
-      <div className="topic-node-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))' }}>
-        {TOPIC_LIST.map(topic => {
-          const matchedProblems = problems.filter(p => p.topic.toLowerCase().includes(topic.toLowerCase().split(' ')[0]))
-          const easy = matchedProblems.filter(p => p.difficulty === 'Easy').length
-          const med = matchedProblems.filter(p => p.difficulty === 'Medium').length
-          const hard = matchedProblems.filter(p => p.difficulty === 'Hard').length
-          const total = matchedProblems.length
+      <div style={{ marginBottom: '28px' }}>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '28px', color: 'var(--text-ink)', marginBottom: '4px' }}>
+          Algorithmic Taxonomy &amp; Knowledge Folio
+        </h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Review the depth of your coverage across every fundamental branch of computer science.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+        {TOPIC_TAXONOMY.map(topic => {
+          const matched = problems.filter(p => p.topic.toLowerCase().includes(topic.name.toLowerCase().split(' ')[0]))
+          const easy = matched.filter(p => p.difficulty === 'Easy').length
+          const med = matched.filter(p => p.difficulty === 'Medium').length
+          const hard = matched.filter(p => p.difficulty === 'Hard').length
+          const total = matched.length
 
           return (
-            <div key={topic} className="topic-node" onClick={() => onSelectTopic(topic)} style={{ cursor: 'pointer' }}>
-              <div className="topic-node-header">
-                <div className="topic-node-name">
-                  <span className="topic-node-dot" style={{ opacity: total ? 1 : 0.3 }} />
-                  <span>{topic}</span>
-                </div>
-                <span className="topic-node-count">{total} Solved</span>
+            <div
+              key={topic.name}
+              className="editorial-card"
+              style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
+              onClick={() => onSelectTopic(topic.name)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span className="genre-pill" style={{ background: topic.color }}>
+                  {topic.name}
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 600 }}>
+                  {total} Solved
+                </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginBottom: '12px', display: 'flex', gap: '8px' }}>
                 <span>{easy} Easy</span>
                 <span>·</span>
                 <span>{med} Med</span>
@@ -926,13 +954,13 @@ function TopicsView({
                 <span>{hard} Hard</span>
               </div>
 
-              <div className="topic-progress-bar">
-                <div className="topic-progress-fill" style={{ width: `${Math.min(100, total * 10)}%` }} />
+              <div className="node-progress-track" style={{ marginBottom: '12px' }}>
+                <div className="node-progress-bar" style={{ width: `${Math.min(100, total * 12)}%`, background: topic.color }} />
               </div>
 
-              <div className="topic-node-footer">
-                <span>Coverage index</span>
-                <span style={{ color: 'var(--accent-text)' }}>Open in Library →</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--accent-clay)', fontWeight: 600 }}>
+                <span>Branch: {topic.branch}</span>
+                <span>Open in Index →</span>
               </div>
             </div>
           )
@@ -943,7 +971,7 @@ function TopicsView({
 }
 
 /* ==========================================================================
-   5. ACHIEVEMENTS VIEW
+   5. ACHIEVEMENTS VIEW — Ex Libris Bookplates
    ========================================================================== */
 function AchievementsView({ data, problems }: { data: DashboardData | null; problems: Problem[] }) {
   const total = problems.length
@@ -954,79 +982,91 @@ function AchievementsView({ data, problems }: { data: DashboardData | null; prob
   const graphCount = problems.filter(p => p.topic.toLowerCase().includes('graph')).length
   const dpCount = problems.filter(p => p.topic.toLowerCase().includes('dynamic')).length
 
-  const milestones = [
+  const stamps = [
     {
-      title: 'Root Node',
-      desc: 'Added your very first algorithm to the vault.',
+      title: 'Ex Libris Primus',
+      desc: 'First problem inscribed into your personal vault.',
       unlocked: total >= 1,
-      metric: `${Math.min(1, total)}/1 problem`
+      tag: 'Root Node (1+)'
     },
     {
-      title: 'Binary Searcher',
-      desc: 'Logged 10 solved algorithms.',
+      title: 'Binary Logarithm',
+      desc: 'Reached 10 solved algorithm records.',
       unlocked: total >= 10,
-      metric: `${Math.min(10, total)}/10 problems`
+      tag: 'O(log n) Milestones (10+)'
     },
     {
-      title: 'Century Milestone',
-      desc: 'Indexed 100 solved algorithmic problems.',
+      title: 'The Century Folio',
+      desc: '100 algorithms preserved and reviewed.',
       unlocked: total >= 100,
-      metric: `${Math.min(100, total)}/100 problems`
+      tag: '100 Solves'
     },
     {
-      title: 'Consistent Traversal',
-      desc: 'Maintained a 7-day spaced practice streak.',
+      title: 'The Seven-Day Habit',
+      desc: 'Completed daily recall sessions 7 days in a row.',
       unlocked: streak >= 7,
-      metric: `${Math.min(7, streak)}/7 days`
+      tag: '7-Day Streak'
     },
     {
-      title: 'Tree Whisperer',
-      desc: 'Conquered 5+ Binary Tree & BST problems.',
+      title: 'Arboreal Insight',
+      desc: 'Mastered 5+ Binary Search Tree or Tree problems.',
       unlocked: treeCount >= 5,
-      metric: `${Math.min(5, treeCount)}/5 trees`
+      tag: 'Trees (5+)'
     },
     {
-      title: 'Graph Explorer',
-      desc: 'Explored 5+ Graph, BFS, or DFS problems.',
+      title: 'Network Navigator',
+      desc: 'Mapped 5+ Graph, BFS, or DFS problems.',
       unlocked: graphCount >= 5,
-      metric: `${Math.min(5, graphCount)}/5 graphs`
+      tag: 'Graphs (5+)'
     },
     {
-      title: 'DP Survivor',
-      desc: 'Overcame 5+ Dynamic Programming subproblems.',
+      title: 'Subproblem Architect',
+      desc: 'Conquered 5+ Dynamic Programming problems.',
       unlocked: dpCount >= 5,
-      metric: `${Math.min(5, dpCount)}/5 DP`
+      tag: 'DP (5+)'
     },
     {
-      title: 'Hardcore Algorist',
+      title: 'Hard Complexity',
       desc: 'Successfully solved a Hard complexity problem.',
       unlocked: hardCount >= 1,
-      metric: `${hardCount} hard solved`
+      tag: 'Hard Solved'
     },
     {
-      title: 'Mastery Forged',
-      desc: 'Attained a 50%+ long-term retention rate.',
+      title: 'Mastery Engraved',
+      desc: 'Achieved a 50%+ retention rate on long intervals.',
       unlocked: mastery >= 50,
-      metric: `${mastery}% / 50% mastery`
+      tag: '50%+ Mastery'
     }
   ]
 
   return (
-    <div className="achievements-grid">
-      {milestones.map(m => (
-        <div key={m.title} className={`achievement-card ${m.unlocked ? 'unlocked' : 'locked'}`}>
-          <div className="achievement-icon">
-            <Trophy size={18} />
+    <div>
+      <div style={{ marginBottom: '28px' }}>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '28px', color: 'var(--text-ink)', marginBottom: '4px' }}>
+          Ex Libris &amp; Algorithmic Bookplates
+        </h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Stamps awarded for deliberate practice consistency and structural mastery.
+        </p>
+      </div>
+
+      <div className="bookplate-grid">
+        {stamps.map(s => (
+          <div key={s.title} className={`bookplate-card ${s.unlocked ? 'unlocked' : 'locked'}`}>
+            <div className="bookplate-stamp">
+              <Trophy size={20} />
+            </div>
+
+            <div className="bookplate-details">
+              <h3>{s.title}</h3>
+              <p>{s.desc}</p>
+              <span className="bookplate-hand-note">
+                {s.unlocked ? `✓ Unlocked [${s.tag}]` : `Incomplete [${s.tag}]`}
+              </span>
+            </div>
           </div>
-          <div className="achievement-details">
-            <h3>{m.title}</h3>
-            <p>{m.desc}</p>
-            <span className="achievement-badge">
-              {m.unlocked ? `✓ Unlocked (${m.metric})` : `Locked (${m.metric})`}
-            </span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
@@ -1050,37 +1090,37 @@ function SettingsPage({
   notify: (x: string) => void
 }) {
   const [name, setName] = useState(user.name)
-  const [currentPassword, setCurrent] = useState('')
-  const [newPassword, setNew] = useState('')
+  const [curPass, setCurPass] = useState('')
+  const [newPass, setNewPass] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  const [err, setErr] = useState('')
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    setError('')
+    setErr('')
     try {
       const updated = await api<User>('/auth/me', {
         method: 'PATCH',
         body: JSON.stringify({
           name: name.trim(),
-          currentPassword: currentPassword || undefined,
-          newPassword: newPassword || undefined
+          currentPassword: curPass || undefined,
+          newPassword: newPass || undefined
         })
       })
       update(updated)
-      setCurrent('')
-      setNew('')
-      notify('Account settings updated.')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update.')
+      setCurPass('')
+      setNewPass('')
+      notify('Notebook credentials updated.')
+    } catch (e: any) {
+      setErr(e.message || 'Could not update credentials.')
     } finally {
       setBusy(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm('CAUTION: This will permanently delete your user account and all problem records from MongoDB. Continue?')) {
+    if (!confirm('CAUTION: This will permanently erase your entire DSA Vault and all stored problems from MongoDB. Proceed?')) {
       return
     }
     await api('/auth/me', { method: 'DELETE' })
@@ -1088,88 +1128,109 @@ function SettingsPage({
   }
 
   return (
-    <div className="settings-container">
-      {/* Theme Appearance Setting */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            <Sparkles size={16} style={{ color: 'var(--accent-primary)' }} />
-            <span>Visual Appearance &amp; Identity</span>
-          </div>
-        </div>
+    <div className="settings-journal-wrap">
+      {/* Theme Choice */}
+      <div className="settings-card">
+        <h3 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '20px', marginBottom: '8px' }}>
+          Visual Theme &amp; Paper Tone
+        </h3>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-          DSA Vault supports both a deep charcoal ink theme and a warm paper theme, unified by the amber forge accent.
+          Switch between warm aged linen paper (light) and dark espresso vellum (dark).
         </p>
-        <button className="btn btn-secondary" onClick={toggleTheme}>
-          {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
-          Switch to {theme === 'dark' ? 'Warm Paper (Light)' : 'Graphite Ink (Dark)'} Theme
+        <button
+          style={{
+            background: 'var(--bg-canvas-subtle)',
+            border: '1px solid var(--border-default)',
+            padding: '9px 16px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'var(--text-ink)'
+          }}
+          onClick={toggleTheme}
+        >
+          {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+          Currently in {theme === 'light' ? 'Aged Paper (Daylight)' : 'Dark Espresso (Candlelight)'} Mode
         </button>
       </div>
 
       {/* Profile & Credentials */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            <UserRound size={16} style={{ color: 'var(--accent-primary)' }} />
-            <span>Profile &amp; Credentials</span>
-          </div>
-        </div>
+      <div className="settings-card">
+        <h3 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '20px', marginBottom: '8px' }}>
+          Author Profile
+        </h3>
 
         <form onSubmit={handleSave}>
-          <div className="form-group">
-            <label>Full Name</label>
-            <input className="form-input" value={name} onChange={e => setName(e.target.value)} required />
+          <div className="form-row">
+            <label>Name</label>
+            <input className="journal-input" value={name} onChange={e => setName(e.target.value)} required />
           </div>
 
-          <div className="form-group">
+          <div className="form-row">
             <label>Email Address</label>
-            <input className="form-input" value={user.email} disabled />
+            <input className="journal-input" value={user.email} disabled style={{ opacity: 0.6 }} />
           </div>
 
-          <div style={{ margin: '20px 0 14px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
-            <div className="card-title" style={{ fontSize: '12.5px', marginBottom: '10px' }}>
-              <Lock size={14} /> Update Password
-            </div>
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed var(--border-default)' }}>
+            <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>Change Password</h4>
 
-            <div className="form-group">
+            <div className="form-row">
               <label>Current Password</label>
               <input
-                className="form-input"
+                className="journal-input"
                 type="password"
-                value={currentPassword}
-                onChange={e => setCurrent(e.target.value)}
-                placeholder="Required if changing password"
+                value={curPass}
+                onChange={e => setCurPass(e.target.value)}
+                placeholder="Required to change password"
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-row">
               <label>New Password (min 8 characters)</label>
               <input
-                className="form-input"
+                className="journal-input"
                 type="password"
-                value={newPassword}
-                onChange={e => setNew(e.target.value)}
+                value={newPass}
+                onChange={e => setNewPass(e.target.value)}
                 minLength={8}
-                placeholder="At least 8 characters"
+                placeholder="New password"
               />
             </div>
           </div>
 
-          {error && <p style={{ color: 'var(--color-hard)', fontSize: '12px', marginBottom: '12px' }}>{error}</p>}
+          {err && <p style={{ color: 'var(--accent-clay)', fontSize: '12px', margin: '8px 0' }}>{err}</p>}
 
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Save Changes'}
+          <button className="btn-add-stamped" type="submit" disabled={busy} style={{ marginTop: '12px' }}>
+            {busy ? 'Saving…' : 'Save Notebook Changes'}
           </button>
         </form>
       </div>
 
       {/* Danger Zone */}
-      <div className="card" style={{ borderColor: 'var(--color-hard-border)', background: 'var(--color-hard-bg)' }}>
-        <h3 style={{ fontSize: '14px', color: 'var(--color-hard)', marginBottom: '6px' }}>Delete Account</h3>
+      <div className="settings-card" style={{ borderColor: 'var(--accent-clay-border)' }}>
+        <h3 style={{ color: 'var(--accent-clay)', fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>
+          Erase Journal
+        </h3>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-          Permanently remove your account and all spaced repetition records from MongoDB. This action cannot be undone.
+          Permanently destroy your vault profile and delete all problem records from the MongoDB database.
         </p>
-        <button className="btn btn-danger" onClick={handleDelete}>
+        <button
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--accent-clay)',
+            color: 'var(--accent-clay)',
+            padding: '8px 14px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+          onClick={handleDelete}
+        >
           Delete Account Permanently
         </button>
       </div>
@@ -1178,7 +1239,7 @@ function SettingsPage({
 }
 
 /* ==========================================================================
-   7. MODALS (Add & Edit Problem)
+   7. MODALS
    ========================================================================== */
 function AddModal({ close, done }: { close: () => void; done: (v: any) => Promise<void> }) {
   const [text, setText] = useState('')
@@ -1186,12 +1247,12 @@ function AddModal({ close, done }: { close: () => void; done: (v: any) => Promis
   const [difficulty, setDifficulty] = useState('Medium')
   const [platform, setPlatform] = useState('LeetCode')
   const [notes, setNotes] = useState('')
-  const [error, setError] = useState('')
+  const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
   const submit = async () => {
     setBusy(true)
-    setError('')
+    setErr('')
     try {
       await done({
         names: text.split('\n'),
@@ -1200,47 +1261,49 @@ function AddModal({ close, done }: { close: () => void; done: (v: any) => Promis
         platform,
         notes
       })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not add problems.')
+    } catch (e: any) {
+      setErr(e.message || 'Could not add problems.')
       setBusy(false)
     }
   }
 
   return (
-    <div className="modal-layer">
-      <div className="modal">
-        <div className="modal-header">
-          <h2>Index Solved Problems</h2>
-          <button className="modal-close" onClick={close}>
-            <X size={16} />
+    <div className="journal-modal-layer">
+      <div className="journal-modal">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '22px' }}>
+            Inscribe Solved Problems
+          </h2>
+          <button style={{ background: 'transparent', border: 0, cursor: 'pointer', color: 'var(--text-muted)' }} onClick={close}>
+            <X size={18} />
           </button>
         </div>
 
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-          Paste problem titles (one per line) for bulk import. Each problem initiates a spaced repetition schedule.
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '6px 0 10px' }}>
+          Paste problem titles (one per line). Each entry begins an adaptive spaced repetition cycle.
         </p>
 
         <textarea
-          className="modal-textarea"
+          className="journal-textarea"
           autoFocus
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder={'Two Sum\nGroup Anagrams\nTrapping Rain Water'}
+          placeholder={'Trapping Rain Water\nCourse Schedule\nWord Break'}
         />
 
-        <div className="modal-grid-fields">
-          <div className="form-group">
-            <label>Topic Taxonomy</label>
-            <select className="filter-select" value={topic} onChange={e => setTopic(e.target.value)}>
-              {TOPIC_LIST.map(t => (
-                <option key={t}>{t}</option>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          <div className="form-row">
+            <label>Topic Domain</label>
+            <select className="catalog-select" value={topic} onChange={e => setTopic(e.target.value)}>
+              {TOPIC_TAXONOMY.map(t => (
+                <option key={t.name}>{t.name}</option>
               ))}
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Difficulty Rating</label>
-            <select className="filter-select" value={difficulty} onChange={e => setDifficulty(e.target.value)}>
+          <div className="form-row">
+            <label>Difficulty</label>
+            <select className="catalog-select" value={difficulty} onChange={e => setDifficulty(e.target.value)}>
               <option>Easy</option>
               <option>Medium</option>
               <option>Hard</option>
@@ -1248,31 +1311,20 @@ function AddModal({ close, done }: { close: () => void; done: (v: any) => Promis
           </div>
         </div>
 
-        <div className="form-group">
-          <label>Platform</label>
-          <select className="filter-select" value={platform} onChange={e => setPlatform(e.target.value)}>
-            <option>LeetCode</option>
-            <option>NeetCode</option>
-            <option>Codeforces</option>
-            <option>HackerRank</option>
-            <option>Custom</option>
-          </select>
-        </div>
-
-        <div className="form-group">
+        <div className="form-row">
           <label>Implementation &amp; Complexity Note (Optional)</label>
           <input
-            className="form-input"
+            className="journal-input"
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="e.g. Hash map approach O(n) time, O(n) space"
+            placeholder="e.g. Monotonic stack approach O(n) time, O(n) space"
           />
         </div>
 
-        {error && <p style={{ color: 'var(--color-hard)', fontSize: '12px', marginBottom: '10px' }}>{error}</p>}
+        {err && <p style={{ color: 'var(--accent-clay)', fontSize: '12px', margin: '8px 0' }}>{err}</p>}
 
-        <button className="btn btn-primary" style={{ width: '100%' }} disabled={!text.trim() || busy} onClick={submit}>
-          {busy ? 'Indexing…' : 'Add to Vault Repository →'}
+        <button className="btn-add-stamped" style={{ width: '100%', justifyContent: 'center', marginTop: '14px' }} disabled={!text.trim() || busy} onClick={submit}>
+          {busy ? 'Inscribing…' : 'Add to Vault Journal →'}
         </button>
       </div>
     </div>
@@ -1305,33 +1357,35 @@ function EditModal({
   }
 
   return (
-    <div className="modal-layer">
-      <div className="modal">
-        <div className="modal-header">
-          <h2>Edit Problem Record</h2>
-          <button className="modal-close" onClick={close}>
-            <X size={16} />
+    <div className="journal-modal-layer">
+      <div className="journal-modal">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '22px' }}>
+            Edit Folio Record
+          </h2>
+          <button style={{ background: 'transparent', border: 0, cursor: 'pointer', color: 'var(--text-muted)' }} onClick={close}>
+            <X size={18} />
           </button>
         </div>
 
-        <div className="form-group">
+        <div className="form-row" style={{ marginTop: '16px' }}>
           <label>Problem Title</label>
-          <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} />
+          <input className="journal-input" value={title} onChange={e => setTitle(e.target.value)} />
         </div>
 
-        <div className="modal-grid-fields">
-          <div className="form-group">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          <div className="form-row">
             <label>Topic</label>
-            <select className="filter-select" value={topic} onChange={e => setTopic(e.target.value)}>
-              {TOPIC_LIST.map(t => (
-                <option key={t}>{t}</option>
+            <select className="catalog-select" value={topic} onChange={e => setTopic(e.target.value)}>
+              {TOPIC_TAXONOMY.map(t => (
+                <option key={t.name}>{t.name}</option>
               ))}
             </select>
           </div>
 
-          <div className="form-group">
+          <div className="form-row">
             <label>Difficulty</label>
-            <select className="filter-select" value={difficulty} onChange={e => setDifficulty(e.target.value as any)}>
+            <select className="catalog-select" value={difficulty} onChange={e => setDifficulty(e.target.value as any)}>
               <option>Easy</option>
               <option>Medium</option>
               <option>Hard</option>
@@ -1339,17 +1393,12 @@ function EditModal({
           </div>
         </div>
 
-        <div className="form-group">
-          <label>Implementation &amp; Complexity Notes</label>
-          <textarea
-            className="modal-textarea"
-            style={{ height: '100px' }}
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
+        <div className="form-row">
+          <label>Implementation &amp; Invariant Notes</label>
+          <textarea className="journal-textarea" style={{ height: '90px' }} value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
 
-        <button className="btn btn-primary" style={{ width: '100%' }} disabled={busy} onClick={handleSave}>
+        <button className="btn-add-stamped" style={{ width: '100%', justifyContent: 'center' }} disabled={busy} onClick={handleSave}>
           {busy ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
@@ -1358,7 +1407,7 @@ function EditModal({
 }
 
 /* ==========================================================================
-   8. AUTHENTICATION VIEW (Ink & Paper Aesthetics)
+   8. AUTHENTICATION (Warm Literary & Architectural Atmosphere)
    ========================================================================== */
 function Auth({ onSubmit }: { onSubmit: (mode: 'login' | 'signup', p: Record<string, string>) => Promise<void> }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -1374,84 +1423,61 @@ function Auth({ onSubmit }: { onSubmit: (mode: 'login' | 'signup', p: Record<str
     setError('')
     try {
       await onSubmit(mode, { name, email, password })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not continue.')
+    } catch (err: any) {
+      setError(err.message || 'Could not authenticate.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-form-panel">
+    <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(380px, 44%) 1fr', background: 'var(--bg-canvas)' }}>
+      <div style={{ padding: '60px 12%', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
-          <div className="brand-icon" style={{ width: '28px', height: '28px' }}>
-            <Code2 size={16} />
-          </div>
+          <div className="brand-notebook-mark">V</div>
           <span style={{ fontWeight: 700, fontSize: '15px' }}>
-            DSA<span style={{ color: 'var(--accent-primary)' }}>Vault</span>
+            DSA Vault <span style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--text-secondary)' }}>/ journal</span>
           </span>
         </div>
 
-        <h1 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.4px', marginBottom: '6px' }}>
-          {mode === 'login' ? 'Access your Vault' : 'Forge your mastery'}
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '32px', color: 'var(--text-ink)', marginBottom: '8px' }}>
+          {mode === 'login' ? 'Open your vault journal' : 'Create your private practice journal'}
         </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
+        <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', marginBottom: '32px' }}>
           {mode === 'login'
-            ? 'Sign in to access your personal spaced repetition schedule.'
-            : 'Initialize your private algorithmic practice tracker.'}
+            ? 'Sign in to access your personal algorithmic spaced repetition docket.'
+            : 'Track problem approaches, preserve invariants, and build permanent algorithmic intuition.'}
         </p>
 
         <form onSubmit={handleSubmit}>
           {mode === 'signup' && (
-            <div className="form-group">
-              <label>Full Name</label>
-              <input
-                className="form-input"
-                type="text"
-                required
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Ada Lovelace"
-              />
+            <div className="form-row">
+              <label>Your Full Name</label>
+              <input className="journal-input" required value={name} onChange={e => setName(e.target.value)} placeholder="Alan Turing" />
             </div>
           )}
 
-          <div className="form-group">
+          <div className="form-row">
             <label>Email Address</label>
-            <input
-              className="form-input"
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="ada@algorithms.dev"
-            />
+            <input className="journal-input" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="alan@princeton.edu" />
           </div>
 
-          <div className="form-group">
+          <div className="form-row">
             <label>Password (min 8 characters)</label>
-            <input
-              className="form-input"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-            />
+            <input className="journal-input" type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••••" />
           </div>
 
-          {error && <p style={{ color: 'var(--color-hard)', fontSize: '12px', marginBottom: '14px' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--accent-clay)', fontSize: '12px', margin: '8px 0 14px' }}>{error}</p>}
 
-          <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '8px' }} disabled={busy}>
-            {busy ? 'Authenticating…' : mode === 'login' ? 'Sign In →' : 'Create Vault →'}
+          <button className="btn-add-stamped" style={{ width: '100%', justifyContent: 'center', padding: '10px', marginTop: '10px' }} disabled={busy}>
+            {busy ? 'Authenticating…' : mode === 'login' ? 'Open Journal →' : 'Begin Practice Journal →'}
           </button>
         </form>
 
-        <p className="auth-switch-text">
-          {mode === 'login' ? "Don't have a vault yet? " : 'Already registered? '}
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '24px', textAlign: 'center' }}>
+          {mode === 'login' ? "Don't have a practice journal yet? " : 'Already inscribed? '}
           <button
+            style={{ background: 'none', border: 0, color: 'var(--accent-clay)', fontWeight: 600, cursor: 'pointer' }}
             type="button"
             onClick={() => {
               setMode(mode === 'login' ? 'signup' : 'login')
@@ -1463,15 +1489,20 @@ function Auth({ onSubmit }: { onSubmit: (mode: 'login' | 'signup', p: Record<str
         </p>
       </div>
 
-      <div className="auth-hero-panel">
-        <div className="auth-hero-content">
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--radius-xs)', background: 'var(--accent-subtle)', border: '1px solid var(--accent-border)', color: 'var(--accent-text)', fontFamily: 'var(--font-mono)', fontSize: '10.5px', marginBottom: '16px' }}>
-            <Zap size={12} /> ALGORITHMIC SPACED REPETITION
+      <div style={{ padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative' }}>
+        <div style={{ maxWidth: '480px' }}>
+          <div className="annotation-badge" style={{ marginBottom: '14px' }}>
+            <span>SPACED REPETITION FOR ALGORITHMS</span>
+            <span className="scribble-arrow">↗</span>
           </div>
-          <h2>Retain what you solve. Permanently.</h2>
-          <p>
-            DSA mastery is not about cramming 500 problems once. It is about calculated, scheduled recall
-            multipliers that cement patterns into intuition.
+
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '38px', fontWeight: 800, letterSpacing: '-1.2px', lineHeight: 1.15, color: 'var(--text-ink)', marginBottom: '18px' }}>
+            Intuition comes from <em>structured retrieval</em>, not blind cramming.
+          </h2>
+
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            DSA Vault acts like an engineer’s field journal with an embedded spaced repetition engine.
+            Instead of solving 600 problems and forgetting them all before the interview, lock every pattern into intuitive memory.
           </p>
         </div>
       </div>
