@@ -179,7 +179,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', width: '100%', maxWidth: '100%', overflowX: 'clip' }}>
       {/* Floating Top Navigation Island (illoca style) */}
       <header className="journal-nav-bar">
         <div className="journal-nav-inner">
@@ -454,7 +454,7 @@ function Dashboard({
   const hard = problems.filter(p => p.difficulty === 'Hard').length
 
   return (
-    <div>
+    <div className="dashboard-view">
       {/* Editorial Headline Moment (illoca style) */}
       <section className="hero-statement-section">
         <div className="annotation-badge">
