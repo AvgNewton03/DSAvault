@@ -214,7 +214,7 @@ export default function App() {
             </button>
 
             <button className="btn-add-stamped" onClick={() => setShowAdd(true)}>
-              <Plus size={14} /> Add Problem
+              <Plus size={14} /> <span className="btn-add-label">Add Problem</span>
             </button>
 
             <div className="account-menu-container" ref={accountMenuRef}>
@@ -338,6 +338,60 @@ export default function App() {
         )}
       </main>
 
+      {/* Mobile Fixed Bottom Navigation Bar (< 769px) */}
+      <nav className="journal-bottom-bar" aria-label="Mobile Navigation">
+        <button
+          className={`bottom-bar-tab ${view === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setView('dashboard')}
+          aria-label="Overview"
+        >
+          <LayoutDashboard size={18} />
+          <span>Overview</span>
+        </button>
+
+        <button
+          className={`bottom-bar-tab ${view === 'library' ? 'active' : ''}`}
+          onClick={() => { setSelectedTopicFilter('all'); setView('library') }}
+          aria-label="Problem Index"
+        >
+          <div className="bottom-bar-tab-icon-wrap">
+            <BookOpen size={18} />
+            {problems.length > 0 && <span className="bottom-bar-badge">{problems.length}</span>}
+          </div>
+          <span>Index</span>
+        </button>
+
+        <button
+          className={`bottom-bar-tab ${view === 'revision' ? 'active' : ''}`}
+          onClick={() => setView('revision')}
+          aria-label="Recall Arena"
+        >
+          <div className="bottom-bar-tab-icon-wrap">
+            <RotateCcw size={18} />
+            {due.length > 0 && <span className="bottom-bar-badge due">{due.length}</span>}
+          </div>
+          <span>Recall</span>
+        </button>
+
+        <button
+          className={`bottom-bar-tab ${view === 'topics' ? 'active' : ''}`}
+          onClick={() => setView('topics')}
+          aria-label="Knowledge Map"
+        >
+          <GitBranch size={18} />
+          <span>Map</span>
+        </button>
+
+        <button
+          className={`bottom-bar-tab ${view === 'achievements' ? 'active' : ''}`}
+          onClick={() => setView('achievements')}
+          aria-label="Ex Libris"
+        >
+          <Trophy size={18} />
+          <span>Ex Libris</span>
+        </button>
+      </nav>
+
       {/* Add Modal */}
       {showAdd && (
         <AddModal
@@ -431,21 +485,26 @@ function Dashboard({
           )}
         </h1>
 
-        <div className="hero-inline-stats">
-          <div className="inline-stat-item">
-            <strong>{total}</strong> indexed solutions
+        <div className="hero-stats-grid">
+          <div className="hero-stat-card">
+            <span className="hero-stat-val">{total}</span>
+            <span className="hero-stat-desc">indexed solutions</span>
           </div>
-          <span className="inline-stat-sep">/</span>
-          <div className="inline-stat-item">
-            <strong>{streak}</strong> consecutive days
+          <div className="hero-stat-card">
+            <span className="hero-stat-val">{streak}</span>
+            <span className="hero-stat-desc">consecutive days</span>
           </div>
-          <span className="inline-stat-sep">/</span>
-          <div className="inline-stat-item">
-            <strong>{data.mastery}%</strong> 7-day retention rate
+          <div className="hero-stat-card">
+            <span className="hero-stat-val">{data.mastery}%</span>
+            <span className="hero-stat-desc">7-day retention</span>
           </div>
-          <span className="inline-stat-sep">/</span>
-          <div className="inline-stat-item">
-            <span>{easy} Easy · {med} Med · {hard} Hard</span>
+          <div className="hero-stat-card">
+            <div className="hero-stat-val difficulty-counts">
+              <span className="diff-chip easy">{easy} E</span>
+              <span className="diff-chip med">{med} M</span>
+              <span className="diff-chip hard">{hard} H</span>
+            </div>
+            <span className="hero-stat-desc">difficulty spread</span>
           </div>
         </div>
       </section>
@@ -560,17 +619,19 @@ function Dashboard({
             Each mark represents an algorithm solved or recalled on that day.
           </p>
 
-          <div className="activity-matrix">
-            {days.map((d, i) => {
-              const lvl = d.count >= 4 ? 'lvl-4' : d.count >= 3 ? 'lvl-3' : d.count >= 2 ? 'lvl-2' : d.count >= 1 ? 'lvl-1' : ''
-              return (
-                <div
-                  key={i}
-                  className={`matrix-cell ${lvl}`}
-                  title={`${d.date}: ${d.count} recorded recall${d.count === 1 ? '' : 's'}`}
-                />
-              )
-            })}
+          <div className="activity-matrix-scroll-wrap">
+            <div className="activity-matrix">
+              {days.map((d, i) => {
+                const lvl = d.count >= 4 ? 'lvl-4' : d.count >= 3 ? 'lvl-3' : d.count >= 2 ? 'lvl-2' : d.count >= 1 ? 'lvl-1' : ''
+                return (
+                  <div
+                    key={i}
+                    className={`matrix-cell ${lvl}`}
+                    title={`${d.date}: ${d.count} recorded recall${d.count === 1 ? '' : 's'}`}
+                  />
+                )
+              })}
+            </div>
           </div>
 
           <div className="matrix-meta">
@@ -594,6 +655,7 @@ function InteractiveTopicGraph({
   onSelectTopic: (topic: string) => void
 }) {
   const [hoveredTopic, setHoveredTopic] = useState<string | null>(null)
+  const [activeBranch, setActiveBranch] = useState<string>('all')
 
   const branches = [
     {
@@ -620,6 +682,25 @@ function InteractiveTopicGraph({
 
   return (
     <div className="graph-canvas-box">
+      {/* Mobile Branch Filter Bar (Visible on mobile/tablet <= 768px) */}
+      <div className="graph-branch-filter-bar">
+        <button
+          className={`branch-filter-pill ${activeBranch === 'all' ? 'active' : ''}`}
+          onClick={() => setActiveBranch('all')}
+        >
+          All Branches
+        </button>
+        {branches.map(b => (
+          <button
+            key={b.id}
+            className={`branch-filter-pill ${activeBranch === b.id ? 'active' : ''}`}
+            onClick={() => setActiveBranch(b.id)}
+          >
+            {b.title.split('&')[0].trim()}
+          </button>
+        ))}
+      </div>
+
       {/* Hand-drawn SVG connector curves between branches */}
       <svg className="graph-svg-layer" preserveAspectRatio="none">
         <path
@@ -637,7 +718,9 @@ function InteractiveTopicGraph({
       </svg>
 
       <div className="graph-nodes-container">
-        {branches.map(branch => (
+        {branches
+          .filter(branch => activeBranch === 'all' || branch.id === activeBranch)
+          .map(branch => (
           <div key={branch.id} className="graph-branch-col">
             <h4 className="branch-title">{branch.title}</h4>
 
@@ -737,7 +820,7 @@ function Library({
   return (
     <div>
       <div className="catalog-toolbar">
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="catalog-toolbar-filters">
           <div className="catalog-search">
             <Search size={15} />
             <input
@@ -747,28 +830,31 @@ function Library({
             />
           </div>
 
-          <select className="catalog-select" value={topicFilter} onChange={e => setTopicFilter(e.target.value)}>
-            <option value="all">All Topics ({problems.length})</option>
-            {TOPIC_TAXONOMY.map(t => (
-              <option key={t.name} value={t.name}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          <div className="catalog-select-group">
+            <select className="catalog-select" value={topicFilter} onChange={e => setTopicFilter(e.target.value)}>
+              <option value="all">All Topics ({problems.length})</option>
+              {TOPIC_TAXONOMY.map(t => (
+                <option key={t.name} value={t.name}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
 
-          <select className="catalog-select" value={diffFilter} onChange={e => setDiffFilter(e.target.value)}>
-            <option value="all">All Difficulties</option>
-            <option value="easy">Easy (●○○)</option>
-            <option value="medium">Medium (●●○)</option>
-            <option value="hard">Hard (●●●)</option>
-          </select>
+            <select className="catalog-select" value={diffFilter} onChange={e => setDiffFilter(e.target.value)}>
+              <option value="all">All Difficulties</option>
+              <option value="easy">Easy (●○○)</option>
+              <option value="medium">Medium (●●○)</option>
+              <option value="hard">Hard (●●●)</option>
+            </select>
+          </div>
         </div>
 
-        <button className="btn-add-stamped" onClick={onOpenAdd}>
+        <button className="btn-add-stamped catalog-add-btn" onClick={onOpenAdd}>
           <Plus size={14} /> Add Problem
         </button>
       </div>
 
+      {/* Desktop & Tablet Table (>= 769px) */}
       <div className="catalog-table-wrap">
         <table className="catalog-table">
           <thead>
@@ -806,24 +892,26 @@ function Library({
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button
-                      className="action-icon-btn"
+                      className="action-icon-btn touch-btn"
                       onClick={e => {
                         e.stopPropagation()
                         setEditing(p)
                       }}
                       title="Edit Entry"
+                      aria-label="Edit problem entry"
                     >
-                      <Edit3 size={14} />
+                      <Edit3 size={15} />
                     </button>
                     <button
-                      className="action-icon-btn"
+                      className="action-icon-btn touch-btn"
                       onClick={e => {
                         e.stopPropagation()
                         deleteProblem(p._id)
                       }}
                       title="Delete Entry"
+                      aria-label="Delete problem entry"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
@@ -840,6 +928,72 @@ function Library({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Folio Cards (< 769px) */}
+      <div className="catalog-cards-wrap">
+        {filtered.length ? (
+          filtered.map((p, idx) => (
+            <div key={p._id} className="catalog-card-item" onClick={() => setEditing(p)}>
+              <div className="catalog-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="catalog-mono">#{String(idx + 1).padStart(3, '0')}</span>
+                  <span className="genre-pill" style={{ background: getTopicColor(p.topic) }}>
+                    {p.topic}
+                  </span>
+                </div>
+                <span className="difficulty-bullet">
+                  {p.difficulty === 'Easy' ? '●○○ Easy' : p.difficulty === 'Medium' ? '●●○ Med' : '●●● Hard'}
+                </span>
+              </div>
+
+              <h4 className="catalog-card-title">{p.title}</h4>
+
+              {p.notes && <p className="catalog-card-notes">{p.notes}</p>}
+
+              <div className="catalog-card-footer">
+                <div className="catalog-card-meta">
+                  <span className="catalog-mono">{p.platform}</span>
+                  <span className="catalog-mono" style={{ color: new Date(p.nextReviewAt) <= new Date() ? 'var(--accent-clay)' : 'inherit' }}>
+                    Recall: {fmtDate(p.nextReviewAt)}
+                  </span>
+                </div>
+
+                <div className="catalog-card-actions">
+                  <button
+                    className="action-icon-btn touch-btn"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setEditing(p)
+                    }}
+                    title="Edit Entry"
+                    aria-label="Edit Problem"
+                  >
+                    <Edit3 size={15} />
+                  </button>
+                  <button
+                    className="action-icon-btn touch-btn delete"
+                    onClick={e => {
+                      e.stopPropagation()
+                      deleteProblem(p._id)
+                    }}
+                    title="Delete Entry"
+                    aria-label="Delete Problem"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="catalog-empty-card">
+            <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '18px', color: 'var(--text-ink)', marginBottom: '4px' }}>
+              No matching folios found.
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Adjust your search query or add a new algorithm entry above.</p>
+          </div>
+        )}
       </div>
 
       {editing && (
@@ -939,33 +1093,17 @@ function Revision({ due, complete }: { due: Problem[]; complete: (id: string, q:
             {current.notes ? current.notes : 'No personal note stored for this entry.'}
           </div>
         ) : (
-          <button
-            style={{
-              background: 'var(--bg-canvas-subtle)',
-              border: '1px solid var(--border-default)',
-              padding: '10px 18px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginBottom: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              color: 'var(--text-ink)'
-            }}
-            onClick={() => setRevealNotes(true)}
-          >
-            <Eye size={14} /> Reveal Stored Implementation &amp; Complexity Note
+          <button className="btn-reveal-notes" onClick={() => setRevealNotes(true)}>
+            <Eye size={15} /> <span>Reveal Stored Implementation &amp; Complexity Note</span>
           </button>
         )}
 
         <div className="recall-btn-grid">
           <button className="btn-recall-pass" disabled={busy} onClick={() => handleRating(5)}>
-            <Check size={16} /> I Remembered the Approach (+2.2x interval)
+            <Check size={16} /> <span>I Remembered (+2.2x interval)</span>
           </button>
           <button className="btn-recall-reset" disabled={busy} onClick={() => handleRating(2)}>
-            <RotateCcw size={15} /> Needed a Hint / Reset (Review tomorrow)
+            <RotateCcw size={15} /> <span>Needed a Hint (Review tomorrow)</span>
           </button>
         </div>
       </div>
@@ -1505,8 +1643,8 @@ function Auth({ onSubmit }: { onSubmit: (mode: 'login' | 'signup', p: Record<str
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(380px, 44%) 1fr', background: 'var(--bg-canvas)' }}>
-      <div style={{ padding: '60px 12%', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}>
+    <div className="auth-page-container">
+      <div className="auth-form-column">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
           <div className="brand-notebook-mark">V</div>
           <span style={{ fontWeight: 700, fontSize: '15px' }}>
@@ -1563,7 +1701,7 @@ function Auth({ onSubmit }: { onSubmit: (mode: 'login' | 'signup', p: Record<str
         </p>
       </div>
 
-      <div style={{ padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative' }}>
+      <div className="auth-hero-column">
         <div style={{ maxWidth: '480px' }}>
           <div className="annotation-badge" style={{ marginBottom: '14px' }}>
             <span>SPACED REPETITION FOR ALGORITHMS</span>
