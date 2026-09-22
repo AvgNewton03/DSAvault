@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BookOpen,
   Check,
@@ -72,6 +72,22 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false)
   const [toast, setToast] = useState('')
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string>('all')
+  const [showAccountMenu, setShowAccountMenu] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false)
+      }
+    }
+    if (showAccountMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showAccountMenu])
 
   // Theme Management (Aged Paper / Dark Espresso)
   const [theme, setTheme] = useState<Theme>(() => {
@@ -204,15 +220,102 @@ export default function App() {
               <Plus size={14} /> Add Problem
             </button>
 
-            <button
-              onClick={logout}
-              title={`Signed in as ${user.name} (Click to sign out)`}
-              style={{ background: 'transparent', border: '0', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
-            >
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--bg-canvas-subtle)', border: '1px solid var(--border-default)', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                {user.name[0].toUpperCase()}
-              </div>
-            </button>
+            <div className="account-menu-container" ref={accountMenuRef}>
+              <button
+                type="button"
+                className="btn-account-avatar"
+                onClick={() => setShowAccountMenu(prev => !prev)}
+                aria-expanded={showAccountMenu}
+                aria-haspopup="true"
+                title={`Account: ${user.name}`}
+              >
+                <div className="account-avatar-circle">
+                  {user.name ? user.name[0].toUpperCase() : 'U'}
+                </div>
+              </button>
+
+              {showAccountMenu && (
+                <div className="account-dropdown-menu" role="menu">
+                  <div className="account-dropdown-profile">
+                    <div className="account-dropdown-avatar">
+                      {user.name ? user.name[0].toUpperCase() : 'U'}
+                    </div>
+                    <div className="account-dropdown-meta">
+                      <span className="account-user-name">{user.name}</span>
+                      <span className="account-user-email">{user.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="account-dropdown-divider" />
+
+                  <button
+                    type="button"
+                    className="account-dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setView('settings')
+                      setShowAccountMenu(false)
+                    }}
+                  >
+                    <Settings size={15} />
+                    <span>Vault Settings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="account-dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setView('library')
+                      setShowAccountMenu(false)
+                    }}
+                  >
+                    <BookOpen size={15} />
+                    <span>Problem Index</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="account-dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setView('revision')
+                      setShowAccountMenu(false)
+                    }}
+                  >
+                    <RotateCcw size={15} />
+                    <span>Recall Arena</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="account-dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      toggleTheme()
+                    }}
+                  >
+                    {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+                    <span>{theme === 'light' ? 'Dark Espresso Theme' : 'Warm Paper Theme'}</span>
+                  </button>
+
+                  <div className="account-dropdown-divider" />
+
+                  <button
+                    type="button"
+                    className="account-dropdown-item sign-out"
+                    role="menuitem"
+                    onClick={() => {
+                      setShowAccountMenu(false)
+                      logout()
+                    }}
+                  >
+                    <LogOut size={15} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
